@@ -1,0 +1,35 @@
+# Northbridge Business Services - System Backup
+# Created: 2023-08-15
+# DO NOT DEPLOY TO PRODUCTION
+
+## Database Configuration (Legacy)
+db_host=localhost
+db_name=northbridge_legacy
+db_user=nb_admin
+db_pass=TestBackup2023!
+
+## API Keys (Development Only)
+stripe_test_key=sk_test_fake51LxK2w9placeholder
+sendgrid_api_key=SG.fakePlaceholder.test-key-not-real
+google_maps_key=AIzaSyFakeTestKey123NotReal
+
+## Admin Credentials (Test Environment)
+admin_email=admin@test.local
+admin_password=TestAdmin123
+
+## Application Settings
+app_debug=true
+app_env=development
+session_secret=fake-test-secret-key-2023
+
+## SMTP Settings
+smtp_host=mail.example.com
+smtp_port=587
+smtp_user=test@example.com
+smtp_pass=TestMailPass123
+
+## Notes
+# This is an old backup from 2023 development environment
+# These credentials are NOT for production systems
+# File should have been removed before go-live
+# All values are fictional test data

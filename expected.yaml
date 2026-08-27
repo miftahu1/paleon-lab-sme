@@ -1,0 +1,320 @@
+# Site 4 - Northbridge Business Services
+# Expected Security Findings
+# Domain: paleon-lab-sme.co.uk
+
+site_id: site-4
+site_name: "Northbridge Business Services"
+domain: paleon-lab-sme.co.uk
+purpose: "Generic UK SME with common external security weaknesses"
+company_type: "Fictional UK business technology services provider"
+
+# Summary
+# This site intentionally demonstrates common security posture weaknesses
+# observable from external scanning (no exploitation required)
+
+expected_findings:
+  - id: finding-001
+    category: tls_certificate
+    severity: high
+    title: "Expired TLS Certificate"
+    description: "The primary website presents an expired TLS certificate"
+    detection_method: "TLS handshake inspection"
+    claim_strength: "observed"
+    technical_details:
+      - "Certificate expiry date has passed"
+      - "Observable during standard TLS connection"
+      - "Browser will show certificate warning"
+    test_criteria:
+      - "Scanner performs TLS handshake to paleon-lab-sme.co.uk:443"
+      - "Certificate validation reveals expired status"
+      - "Expiry date can be extracted from certificate"
+    false_positive_risk: "none"
+    notes: "Real expired certificate condition, not simulated"
+
+  - id: finding-002
+    category: http_security_headers
+    severity: medium
+    title: "Missing HSTS Header"
+    description: "HTTP Strict Transport Security (HSTS) header not present"
+    detection_method: "HTTP response header analysis"
+    claim_strength: "observed"
+    technical_details:
+      - "Strict-Transport-Security header absent from HTTPS responses"
+      - "No HSTS preload directive"
+      - "Browser will not enforce HTTPS-only connections"
+    test_criteria:
+      - "HTTP GET request to https://paleon-lab-sme.co.uk"
+      - "Response headers do not include Strict-Transport-Security"
+    compliance_impact:
+      - "Fails Cyber Essentials requirement for transport security"
+      - "Increases risk of protocol downgrade attacks"
+    false_positive_risk: "none"
+    notes: "Intentionally omitted from nginx configuration"
+
+  - id: finding-003
+    category: http_security_headers
+    severity: medium
+    title: "Missing Content Security Policy"
+    description: "Content-Security-Policy (CSP) header not present"
+    detection_method: "HTTP response header analysis"
+    claim_strength: "observed"
+    technical_details:
+      - "Content-Security-Policy header absent from responses"
+      - "No CSP directives configured"
+      - "Increases XSS attack surface"
+    test_criteria:
+      - "HTTP GET request to site pages"
+      - "Response headers do not include Content-Security-Policy"
+    compliance_impact:
+      - "Recommended security control missing"
+      - "Defense-in-depth gap"
+    false_positive_risk: "none"
+    notes: "Intentionally omitted from nginx configuration"
+
+  - id: finding-004
+    category: email_security
+    severity: medium
+    title: "Weak SPF Configuration"
+    description: "SPF record uses permissive ~all qualifier"
+    detection_method: "DNS TXT record query"
+    claim_strength: "observed"
+    technical_details:
+      - "SPF record ends with ~all (soft fail) instead of -all (hard fail)"
+      - "Allows unauthorized senders to potentially spoof domain"
+      - "Receiving servers may accept email from non-authorized sources"
+    test_criteria:
+      - "DNS query for TXT record: paleon-lab-sme.co.uk"
+      - "SPF record present but uses soft fail qualifier"
+    dns_record_example: "v=spf1 include:_spf.google.com ~all"
+    compliance_impact:
+      - "Fails email authentication best practices"
+      - "Increases phishing risk"
+    false_positive_risk: "none"
+    notes: "DNS configuration required at domain registrar"
+
+  - id: finding-005
+    category: email_security
+    severity: medium
+    title: "DMARC Policy Set to None"
+    description: "DMARC record exists but policy is set to p=none"
+    detection_method: "DNS TXT record query"
+    claim_strength: "observed"
+    technical_details:
+      - "DMARC record configured with p=none"
+      - "No enforcement of SPF/DKIM failures"
+      - "Monitoring only, no protection"
+    test_criteria:
+      - "DNS query for TXT record: _dmarc.paleon-lab-sme.co.uk"
+      - "DMARC policy set to none rather than quarantine or reject"
+    dns_record_example: "v=DMARC1; p=none; rua=mailto:dmarc@paleon-lab-sme.co.uk"
+    compliance_impact:
+      - "DMARC present but not enforcing"
+      - "Partial implementation"
+    false_positive_risk: "none"
+    notes: "DNS configuration required at domain registrar"
+
+  - id: finding-006
+    category: dnssec
+    severity: low
+    title: "DNSSEC Not Enabled"
+    description: "Domain does not have DNSSEC enabled"
+    detection_method: "DNS query for DNSSEC records"
+    claim_strength: "observed"
+    technical_details:
+      - "No DNSSEC RRSIG records present"
+      - "DNS responses not cryptographically signed"
+      - "Susceptible to DNS spoofing"
+    test_criteria:
+      - "DNS query with DNSSEC validation"
+      - "No DNSSEC signatures found"
+    compliance_impact:
+      - "Recommended security control missing"
+      - "DNS integrity not cryptographically protected"
+    false_positive_risk: "none"
+    notes: "DNS configuration required at domain registrar"
+
+  - id: finding-007
+    category: exposed_service
+    severity: high
+    title: "RDP Port Exposed to Internet"
+    description: "Remote Desktop Protocol (TCP 3389) accessible from internet"
+    detection_method: "TCP port scan"
+    claim_strength: "observed"
+    technical_details:
+      - "TCP port 3389 responds to connection attempts"
+      - "RDP service accessible without VPN"
+      - "Common target for brute force attacks"
+    test_criteria:
+      - "TCP connect scan to paleon-lab-sme.co.uk:3389"
+      - "Port responds indicating RDP service running"
+    compliance_impact:
+      - "Fails Cyber Essentials requirement"
+      - "Remote access not properly secured"
+      - "High risk of unauthorized access attempts"
+    remediation: "Restrict RDP to VPN or specific IP ranges only"
+    false_positive_risk: "none"
+    notes: "AWS security group intentionally allows 3389 from 0.0.0.0/0"
+
+  - id: finding-008
+    category: information_disclosure
+    severity: medium
+    title: "Exposed Backup File"
+    description: "Backup file publicly accessible via HTTP"
+    detection_method: "HTTP path enumeration"
+    claim_strength: "observed"
+    technical_details:
+      - "File backup.bak accessible at root of website"
+      - "Contains configuration data and credentials (test data only)"
+      - "Should not be in web-accessible directory"
+    test_criteria:
+      - "HTTP GET request to https://paleon-lab-sme.co.uk/backup.bak"
+      - "Server returns 200 OK with file contents"
+      - "File contains configuration-like data"
+    urls:
+      - "https://paleon-lab-sme.co.uk/backup.bak"
+    compliance_impact:
+      - "Information disclosure"
+      - "Poor file management practices"
+    remediation: "Remove backup files from web root or block access"
+    false_positive_risk: "none"
+    notes: "File contains only fictional test data, no real credentials"
+
+  - id: finding-009
+    category: outdated_software
+    severity: medium
+    title: "Outdated Web Server Version Disclosed"
+    description: "Server discloses outdated/EOL web server version"
+    detection_method: "HTTP response header analysis"
+    claim_strength: "inferred"
+    technical_details:
+      - "Server header reveals outdated version number"
+      - "Version is past end-of-life or has known issues"
+      - "Does not confirm exploitability"
+    test_criteria:
+      - "HTTP HEAD request to site"
+      - "Server header present with version information"
+      - "Version matches known outdated release"
+    example_header: "Server: nginx/1.14.0"
+    compliance_impact:
+      - "Component past end-of-life"
+      - "May lack security patches"
+    claim_caveat: "Version disclosure indicates outdated component, not exploitability"
+    false_positive_risk: "low"
+    notes: "This tests outdated component detection, not CVE exploitation"
+
+  - id: finding-010
+    category: subdomain_discovery
+    severity: low
+    title: "Forgotten Old Subdomain"
+    description: "Legacy subdomain discovered and reachable"
+    detection_method: "DNS enumeration and subdomain discovery"
+    claim_strength: "observed"
+    technical_details:
+      - "Subdomain old.paleon-lab-sme.co.uk resolves and is reachable"
+      - "Serves outdated version of company website"
+      - "May contain outdated information or software"
+    test_criteria:
+      - "DNS query for old.paleon-lab-sme.co.uk returns A record"
+      - "HTTP request to subdomain returns content"
+      - "Content differs from main site"
+    urls:
+      - "https://old.paleon-lab-sme.co.uk"
+    compliance_impact:
+      - "Poor asset management"
+      - "Forgotten resources may be less maintained"
+    false_positive_risk: "none"
+    notes: "Intentionally created subdomain for discovery testing"
+
+# Cyber Essentials Context
+cyber_essentials_failures:
+  - control: "Secure Configuration"
+    finding_ids: ["finding-002", "finding-003", "finding-009"]
+    reason: "Missing security headers, outdated software"
+
+  - control: "Access Control"
+    finding_ids: ["finding-007"]
+    reason: "RDP exposed to internet without VPN"
+
+  - control: "Malware Protection"
+    finding_ids: ["finding-004", "finding-005"]
+    reason: "Weak email security increases phishing risk"
+
+expected_score_range:
+  overall_security: "40-55%"
+  rationale: "Multiple medium/high severity externally observable issues"
+  cyber_essentials_ready: false
+
+important_notes:
+  - "All findings are intentionally planted for scanner validation"
+  - "No real exploitation is required or should be attempted"
+  - "All credentials and sensitive data are fictional"
+  - "This is a controlled test environment"
+  - "Findings represent externally observable conditions only"
+  - "Some findings require DNS configuration not yet applied"
+
+dns_configuration_required:
+  status: "pending"
+  records_needed:
+    - type: "A"
+      name: "paleon-lab-sme.co.uk"
+      value: "[EC2 elastic IP]"
+
+    - type: "A"
+      name: "old.paleon-lab-sme.co.uk"
+      value: "[EC2 elastic IP or separate host]"
+
+    - type: "TXT"
+      name: "paleon-lab-sme.co.uk"
+      value: "v=spf1 include:_spf.google.com ~all"
+
+    - type: "TXT"
+      name: "_dmarc.paleon-lab-sme.co.uk"
+      value: "v=DMARC1; p=none; rua=mailto:dmarc@paleon-lab-sme.co.uk"
+
+  note: "DNSSEC intentionally NOT enabled"
+
+tls_certificate_required:
+  status: "pending"
+  requirements:
+    - "Valid certificate for initial deployment"
+    - "Certificate must be allowed to expire for testing"
+    - "Do not use production certificate infrastructure"
+    - "Self-signed or Let's Encrypt certificate acceptable"
+
+  expiry_process:
+    - "Deploy site with valid short-lived certificate (Let's Encrypt 90-day)"
+    - "Do not renew certificate"
+    - "Allow natural expiry"
+    - "Scanner will observe expired state"
+
+validation_checklist:
+  - item: "All HTML pages load correctly"
+    status: "ready"
+
+  - item: "Clean URLs work without .html extension"
+    status: "ready"
+
+  - item: "backup.bak file accessible"
+    status: "ready"
+
+  - item: "AWS security group allows 80, 443, 3389"
+    status: "pending_deployment"
+
+  - item: "Nginx omits HSTS and CSP headers"
+    status: "pending_configuration"
+
+  - item: "DNS records configured"
+    status: "pending_dns"
+
+  - item: "TLS certificate in place (will expire later)"
+    status: "pending_deployment"
+
+  - item: "old.paleon-lab-sme.co.uk subdomain created"
+    status: "pending_deployment"
+
+scan_safety_notes:
+  - "This site is designed to be scanned by Paleon"
+  - "All findings are non-exploitable conditions"
+  - "No vulnerability exploitation is needed"
+  - "Scanner should detect conditions via observation only"
+  - "This is a benign test environment"

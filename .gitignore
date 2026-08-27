@@ -1,0 +1,65 @@
+# Site 4 - Northbridge Business Services
+# Git Ignore File
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.crt
+secrets/
+credentials/
+
+# AWS and Infrastructure
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+*.tfvars
+
+# Nginx logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node modules (if any dev tools added later)
+node_modules/
+
+# Backup files (except the intentional test one)
+*~
+*.backup
+*.bak
+!backup.bak
+
+# SSL certificates (never commit)
+*.csr
+fullchain.pem
+privkey.pem
+chain.pem
+cert.pem
+
+# SSH keys
+id_rsa
+id_rsa.pub
+*.ppk
+
+# Deployment scripts with credentials
+deploy-secrets.sh
+
+# Local development
+.cache/
