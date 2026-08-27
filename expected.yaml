@@ -136,24 +136,26 @@ expected_findings:
   - id: finding-007
     category: exposed_service
     severity: high
-    title: "RDP Port Exposed to Internet"
-    description: "Remote Desktop Protocol (TCP 3389) accessible from internet"
+    title: "TCP Port 3389 Exposed to Internet"
+    description: "TCP port 3389 (commonly used for RDP) accessible from internet"
     detection_method: "TCP port scan"
     claim_strength: "observed"
     technical_details:
       - "TCP port 3389 responds to connection attempts"
-      - "RDP service accessible without VPN"
-      - "Common target for brute force attacks"
+      - "Port commonly associated with Remote Desktop Protocol"
+      - "Exposed remote access port increases attack surface"
+      - "Note: This test uses a dummy TCP listener, not a real RDP service"
     test_criteria:
       - "TCP connect scan to paleon-lab-sme.co.uk:3389"
-      - "Port responds indicating RDP service running"
+      - "Port responds to TCP connection (SYN-ACK received)"
+      - "Scanner observes port in 'open' state"
     compliance_impact:
       - "Fails Cyber Essentials requirement"
-      - "Remote access not properly secured"
-      - "High risk of unauthorized access attempts"
-    remediation: "Restrict RDP to VPN or specific IP ranges only"
+      - "Remote access ports should not be publicly exposed"
+      - "Increases attack surface even if service not fully functional"
+    remediation: "Close port 3389 or restrict to VPN/specific IP ranges only"
     false_positive_risk: "none"
-    notes: "AWS security group intentionally allows 3389 from 0.0.0.0/0"
+    notes: "Test environment uses dummy TCP listener on port 3389, not actual RDP service"
 
   - id: finding-008
     category: information_disclosure
@@ -275,17 +277,24 @@ dns_configuration_required:
 
 tls_certificate_required:
   status: "pending"
+  approach: "self-signed-expired"
   requirements:
-    - "Valid certificate for initial deployment"
-    - "Certificate must be allowed to expire for testing"
+    - "Self-signed certificate with past expiry date"
     - "Do not use production certificate infrastructure"
-    - "Self-signed or Let's Encrypt certificate acceptable"
+    - "Certificate must be observable as expired during TLS handshake"
+    - "Private key must not be committed to repository"
 
-  expiry_process:
-    - "Deploy site with valid short-lived certificate (Let's Encrypt 90-day)"
-    - "Do not renew certificate"
-    - "Allow natural expiry"
-    - "Scanner will observe expired state"
+  implementation:
+    - "Generate self-signed certificate with 1-day validity"
+    - "Wait 2 days for expiry OR backdate certificate"
+    - "Configure Nginx to use expired certificate"
+    - "Scanner will observe expired certificate during TLS handshake"
+
+  benefits:
+    - "No 90-day wait required"
+    - "Immediately reproducible"
+    - "Full control over expiry"
+    - "No Let's Encrypt rate limits"
 
 validation_checklist:
   - item: "All HTML pages load correctly"
@@ -303,13 +312,19 @@ validation_checklist:
   - item: "Nginx omits HSTS and CSP headers"
     status: "pending_configuration"
 
-  - item: "DNS records configured"
+  - item: "Nginx configured with custom Server header (old version)"
+    status: "pending_configuration"
+
+  - item: "DNS records configured (A, SPF, DMARC)"
     status: "pending_dns"
 
-  - item: "TLS certificate in place (will expire later)"
+  - item: "Self-signed expired TLS certificate deployed"
     status: "pending_deployment"
 
-  - item: "old.paleon-lab-sme.co.uk subdomain created"
+  - item: "Dummy TCP listener on port 3389 configured"
+    status: "pending_deployment"
+
+  - item: "old.paleon-lab-sme.co.uk subdomain resolves and serves content"
     status: "pending_deployment"
 
 scan_safety_notes:

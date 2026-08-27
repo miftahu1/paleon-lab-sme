@@ -2,6 +2,9 @@
 
 **Paleon Cybersecurity Scanner Validation Laboratory**
 
+**Updated:** 2026-08-28  
+**Architecture:** Minimal EC2 + Dummy TCP Listener
+
 ## Overview
 
 Site 4 is a fictional UK small-medium enterprise (SME) website designed to test whether Paleon's external scanner correctly detects a known set of externally observable security weaknesses commonly found in UK businesses.
@@ -35,28 +38,49 @@ All names, addresses, testimonials, and business details are completely fictiona
 
 ## Architecture
 
-### Website Stack
+### Minimal Infrastructure Approach
 
-- **Frontend:** HTML5, CSS3, vanilla JavaScript
-- **Web Server:** Nginx on Ubuntu
-- **Hosting:** AWS EC2
-- **Structure:** Static site with directory-based clean URLs
-
-### Infrastructure
+Site 4 uses **minimal infrastructure** - only deploying what's genuinely needed for externally observable test conditions.
 
 ```
-Internet
-    │
-    ▼
-AWS EC2 Instance
-    │
-    ├── Nginx (port 80, 443)
-    ├── RDP (port 3389) - INTENTIONALLY EXPOSED
-    │
-    └── Static HTML/CSS/JS
+AWS EC2 t4g.nano (eu-west-2)
+│
+├── Nginx (ports 80, 443)
+│   ├── Static website files
+│   ├── Missing HSTS header (intentional)
+│   ├── Missing CSP header (intentional)
+│   ├── Custom Server header (old version)
+│   ├── Exposed backup.bak file
+│   └── Self-signed expired TLS certificate
+│
+└── Dummy TCP Listener (port 3389)
+    └── socat - accepts connections, no RDP functionality
+
+DNS Configuration (external):
+├── A records (main, www, old subdomain)
+├── Weak SPF record (~all)
+├── DMARC p=none
+└── DNSSEC disabled (intentional)
 ```
 
-### URL Structure
+### What Does NOT Require Infrastructure
+
+These findings are DNS-only:
+- ✅ Weak SPF configuration
+- ✅ DMARC policy p=none
+- ✅ DNSSEC not enabled
+
+### What Requires Infrastructure
+
+These findings need the EC2 instance:
+- ⚠️ Missing HSTS/CSP headers (Nginx configuration)
+- ⚠️ Exposed /backup.bak file (web server)
+- ⚠️ Outdated server version disclosure (Nginx header)
+- ⚠️ Expired TLS certificate (self-signed)
+- ⚠️ TCP port 3389 reachable (dummy listener)
+- ⚠️ Subdomain discovery (old.paleon-lab-sme.co.uk)
+
+## URL Structure
 
 The site uses directory-based routing with `index.html` files:
 
@@ -79,8 +103,8 @@ Site 4 contains **10 deliberately planted weaknesses** for scanner validation.
 ### 1. Expired TLS Certificate ⚠️ HIGH
 
 - **Detection:** TLS handshake inspection
-- **Status:** Certificate will expire after deployment
-- **Observable:** Real expired certificate condition
+- **Implementation:** Self-signed certificate with past expiry date
+- **Observable:** Real expired certificate condition during TLS handshake
 - **Claim:** `observed`
 
 ### 2. Missing HSTS Header 🔶 MEDIUM
@@ -120,11 +144,12 @@ Site 4 contains **10 deliberately planted weaknesses** for scanner validation.
 - **Observable:** No DNSSEC signatures present
 - **Claim:** `observed`
 
-### 7. RDP Port Exposed ⚠️ HIGH
+### 7. TCP Port 3389 Exposed ⚠️ HIGH
 
 - **Detection:** TCP port scan
-- **Configuration:** AWS Security Group allows TCP 3389 from 0.0.0.0/0
-- **Observable:** Port 3389 responds to connections
+- **Configuration:** Dummy TCP listener on port 3389
+- **Observable:** Port 3389 responds to TCP connection attempts
+- **Important:** Uses dummy listener, NOT real RDP service
 - **Claim:** `observed`
 - **Compliance:** Fails Cyber Essentials
 
@@ -139,8 +164,8 @@ Site 4 contains **10 deliberately planted weaknesses** for scanner validation.
 ### 9. Outdated Server Version 🔶 MEDIUM
 
 - **Detection:** HTTP Server header analysis
-- **Configuration:** Nginx configured to expose version number
-- **Observable:** Server header reveals outdated version
+- **Configuration:** Nginx configured with custom Server header showing old version
+- **Observable:** Server header reveals nginx/1.14.0
 - **Claim:** `inferred` (indicates outdated component, not confirmed exploitation)
 
 ### 10. Forgotten Old Subdomain 🔵 LOW
@@ -181,7 +206,7 @@ See `expected.yaml` for complete expected findings documentation.
 Site 4 tests Cyber Essentials-related failures:
 
 - **Secure Configuration:** Missing security headers, outdated software
-- **Access Control:** RDP exposed to internet
+- **Access Control:** TCP port 3389 exposed to internet
 - **Malware Protection:** Weak email security (phishing risk)
 
 ## Local Development
@@ -208,221 +233,141 @@ npx live-server
 # Navigate to http://localhost:8000
 ```
 
-**Note:** Local testing won't replicate security findings (no TLS, no DNS, etc.)
+**Note:** Local testing won't replicate security findings (no TLS, no DNS, no port 3389, etc.)
 
 ## Deployment
 
-### AWS Infrastructure Required
+### Quick Start
 
-- **EC2 Instance:** Ubuntu 22.04 LTS or similar
-- **Instance Type:** t3.small or larger
-- **Elastic IP:** Static IP address
-- **Security Group:**
-  - TCP 80 (HTTP) - 0.0.0.0/0
-  - TCP 443 (HTTPS) - 0.0.0.0/0
-  - TCP 3389 (RDP) - 0.0.0.0/0 ⚠️ Intentional
+See `DEPLOYMENT.md` for complete step-by-step deployment guide.
 
-### DNS Configuration Required
+### Summary
 
-Configure at your domain registrar or DNS provider:
+1. **Launch EC2:** t4g.nano Ubuntu 22.04 ARM64 in eu-west-2
+2. **Configure Security Group:** Allow 80, 443, 3389 from 0.0.0.0/0; SSH from admin IP only
+3. **Allocate Elastic IP:** Associate with instance
+4. **Configure DNS:** A records for main/www/old subdomain; SPF and DMARC TXT records
+5. **Install Software:** nginx, nginx-extras, socat, openssl
+6. **Create Certificate:** Self-signed with 1-day validity (wait 2 days for expiry)
+7. **Deploy Website:** Copy files to /var/www/paleon-lab-sme/
+8. **Configure Nginx:** Deploy config with missing headers and custom Server version
+9. **Start Dummy Listener:** systemd service for socat on port 3389
+10. **Verify:** Test all routes, headers, certificate, and port 3389
 
-```
+### Infrastructure Requirements
+
+- **Instance:** AWS EC2 t4g.nano (2 vCPU, 0.5GB RAM)
+- **Region:** eu-west-2 (London)
+- **Elastic IP:** Required for stable DNS
+- **Monthly Cost:** ~$5-6
+
+### DNS Configuration
+
+Configure at your domain registrar:
+
+```dns
 # A Records
-paleon-lab-sme.co.uk                 → [EC2 Elastic IP]
-old.paleon-lab-sme.co.uk             → [EC2 Elastic IP or separate host]
+paleon-lab-sme.co.uk          IN A    [EC2-ELASTIC-IP]
+www.paleon-lab-sme.co.uk      IN A    [EC2-ELASTIC-IP]
+old.paleon-lab-sme.co.uk      IN A    [EC2-ELASTIC-IP]
 
-# SPF Record (TXT)
-paleon-lab-sme.co.uk                 → "v=spf1 include:_spf.google.com ~all"
+# SPF Record (weak - intentional)
+paleon-lab-sme.co.uk          IN TXT  "v=spf1 include:_spf.google.com ~all"
 
-# DMARC Record (TXT)
-_dmarc.paleon-lab-sme.co.uk          → "v=DMARC1; p=none; rua=mailto:dmarc@paleon-lab-sme.co.uk"
+# DMARC Record (p=none - intentional)
+_dmarc.paleon-lab-sme.co.uk   IN TXT  "v=DMARC1; p=none; rua=mailto:dmarc@paleon-lab-sme.co.uk"
 
-# DNSSEC: DO NOT ENABLE (intentionally missing)
+# DNSSEC: DO NOT ENABLE (intentional)
 ```
 
-### TLS Certificate Setup
+### TLS Certificate Strategy
 
-**Strategy:** Use Let's Encrypt with short-lived certificate
+**Self-signed expired certificate approach:**
 
 ```bash
-# Install certbot
-sudo apt update
-sudo apt install certbot python3-certbot-nginx
+# Generate certificate with 1-day validity
+openssl req -x509 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/paleon-lab-sme.key \
+  -out /etc/ssl/certs/paleon-lab-sme.crt \
+  -days 1 -nodes \
+  -subj "/C=GB/ST=Greater Manchester/L=Manchester/O=Northbridge Business Services/CN=paleon-lab-sme.co.uk" \
+  -addext "subjectAltName=DNS:paleon-lab-sme.co.uk,DNS:www.paleon-lab-sme.co.uk,DNS:old.paleon-lab-sme.co.uk"
 
-# Obtain certificate
-sudo certbot certonly --nginx -d paleon-lab-sme.co.uk -d www.paleon-lab-sme.co.uk
-
-# DO NOT enable auto-renewal
-# Certificate will expire after 90 days naturally
-sudo systemctl stop certbot.timer
-sudo systemctl disable certbot.timer
+# Wait 2 days for natural expiry
 ```
 
-**Certificate Expiry Plan:**
-1. Deploy with valid certificate
-2. Disable auto-renewal
-3. Allow natural expiry after 90 days
-4. Scanner will observe expired state
+**Benefits:**
+- No 90-day wait required
+- Immediately reproducible
+- Full control over expiry
+- No Let's Encrypt rate limits or dependencies
 
-⚠️ Never use production certificate infrastructure for this test site.
+### Port 3389 Dummy Listener
 
-### Nginx Installation
+**Important:** This is NOT a real RDP service.
+
+A simple TCP listener that accepts connections but provides no remote access functionality:
 
 ```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
+# Systemd service using socat
+sudo tee /etc/systemd/system/dummy-rdp.service << 'EOF'
+[Unit]
+Description=Dummy TCP Listener on Port 3389 for Paleon Testing
+After=network.target
 
-# Install nginx
-sudo apt install nginx -y
+[Service]
+ExecStart=/usr/bin/socat TCP-LISTEN:3389,reuseaddr,fork EXEC:/bin/cat
+Restart=always
+User=nobody
+Group=nogroup
 
-# Enable version disclosure (for outdated component test)
-sudo nano /etc/nginx/nginx.conf
-# Comment out or remove: server_tokens off;
-# This exposes the nginx version in Server header
+[Install]
+WantedBy=multi-user.target
+EOF
 
-# Copy site files
-sudo mkdir -p /var/www/paleon-lab-sme
-sudo cp -r * /var/www/paleon-lab-sme/
-
-# Copy old site
-sudo mkdir -p /var/www/paleon-lab-sme-old
-sudo cp -r old-site/* /var/www/paleon-lab-sme-old/
-
-# Copy nginx configuration
-sudo cp nginx.conf /etc/nginx/sites-available/paleon-lab-sme
-sudo ln -s /etc/nginx/sites-available/paleon-lab-sme /etc/nginx/sites-enabled/
-
-# Remove default site
-sudo rm /etc/nginx/sites-enabled/default
-
-# Test configuration
-sudo nginx -t
-
-# Restart nginx
-sudo systemctl restart nginx
+sudo systemctl enable --now dummy-rdp
 ```
 
-### RDP Setup (Windows Server on same EC2)
-
-If using Windows Server:
-
-```powershell
-# Enable RDP
-Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-
-# Allow RDP through firewall
-Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-```
-
-Or deploy Linux and document that port 3389 is open but service may not respond (still detectable via port scan).
-
-### Post-Deployment Checklist
-
-- [ ] Website loads at paleon-lab-sme.co.uk
-- [ ] HTTPS works with valid certificate
-- [ ] All routes work (/about, /services, etc.)
-- [ ] Direct requests and refreshes work
-- [ ] backup.bak file accessible at root
-- [ ] Port 3389 open and reachable
-- [ ] old.paleon-lab-sme.co.uk resolves and loads
-- [ ] HSTS header missing (verify with curl)
-- [ ] CSP header missing (verify with curl)
-- [ ] SPF and DMARC records configured
-- [ ] Server version disclosed in headers
+**Security:** Runs as unprivileged user, no RDP protocol implementation, no authentication, no remote execution capability.
 
 ## Verification Commands
 
+### Test from External Machine
+
 ```bash
-# Check site loads
+# Check website loads
 curl -I https://paleon-lab-sme.co.uk
 
 # Verify missing HSTS
 curl -I https://paleon-lab-sme.co.uk | grep -i strict
+# Should return nothing
 
 # Verify missing CSP
 curl -I https://paleon-lab-sme.co.uk | grep -i content-security
+# Should return nothing
+
+# Verify Server header shows old version
+curl -I https://paleon-lab-sme.co.uk | grep -i server
+# Should show: Server: nginx/1.14.0
 
 # Check backup file accessible
 curl https://paleon-lab-sme.co.uk/backup.bak
 
-# Check RDP port
+# Check port 3389 reachable
 nmap -p 3389 paleon-lab-sme.co.uk
+# Should show: 3389/tcp open
+
+# Or use netcat
+nc -zv paleon-lab-sme.co.uk 3389
+
+# Verify certificate expired
+echo | openssl s_client -connect paleon-lab-sme.co.uk:443 2>/dev/null | openssl x509 -noout -dates
 
 # Check DNS records
 dig paleon-lab-sme.co.uk TXT
 dig _dmarc.paleon-lab-sme.co.uk TXT
-
-# Check old subdomain
-curl -I https://old.paleon-lab-sme.co.uk
+dig old.paleon-lab-sme.co.uk
 ```
-
-## Reset/Rebuild Process
-
-### Full Rebuild
-
-```bash
-# On EC2 instance
-sudo systemctl stop nginx
-sudo rm -rf /var/www/paleon-lab-sme
-sudo rm -rf /var/www/paleon-lab-sme-old
-
-# Re-deploy from repository
-cd /path/to/repo
-sudo mkdir -p /var/www/paleon-lab-sme
-sudo cp -r index.html about services solutions resources contact css js images backup.bak /var/www/paleon-lab-sme/
-
-sudo mkdir -p /var/www/paleon-lab-sme-old
-sudo cp -r old-site/* /var/www/paleon-lab-sme-old/
-
-sudo systemctl start nginx
-```
-
-### Update Content Only
-
-```bash
-# Update specific files
-sudo cp index.html /var/www/paleon-lab-sme/
-sudo systemctl reload nginx
-```
-
-## AWS Permissions Required
-
-To deploy this site, you'll need AWS permissions for:
-
-- EC2 instance creation and management
-- Security group creation and modification
-- Elastic IP allocation and association
-- SSH key pair management
-
-**IAM Policy Example:**
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:RunInstances",
-        "ec2:TerminateInstances",
-        "ec2:DescribeInstances",
-        "ec2:CreateSecurityGroup",
-        "ec2:AuthorizeSecurityGroupIngress",
-        "ec2:AllocateAddress",
-        "ec2:AssociateAddress"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "aws:RequestedRegion": "eu-west-2"
-        }
-      }
-    }
-  ]
-}
-```
-
-⚠️ **Important:** This instance should be isolated from production Paleon infrastructure.
 
 ## File Structure
 
@@ -442,13 +387,16 @@ sme/
 ├── css/
 │   └── main.css              # Main stylesheet
 ├── js/
-│   └── main.js               # JavaScript (mobile nav, etc.)
-├── images/                    # Image assets (if any)
+│   └── main.js               # JavaScript
+├── images/                    # Image assets
 ├── backup.bak                 # INTENTIONALLY EXPOSED (fake data)
 ├── old-site/
 │   └── index.html            # Legacy subdomain content
 ├── nginx.conf                 # Nginx configuration
 ├── expected.yaml              # Expected findings documentation
+├── ARCHITECTURE.md            # Architecture details
+├── DEPLOYMENT.md              # Step-by-step deployment guide
+├── REDESIGN.md                # UI redesign documentation
 ├── .gitignore                 # Git ignore rules
 └── README.md                  # This file
 ```
@@ -457,6 +405,8 @@ sme/
 
 - Real credentials or secrets
 - Real customer data
+- Real RDP service or xrdp
+- Windows Remote Desktop
 - Database
 - Authentication system
 - Payment processing
@@ -471,6 +421,7 @@ sme/
 
 This environment MUST ONLY be used to scan:
 - paleon-lab-sme.co.uk
+- www.paleon-lab-sme.co.uk
 - old.paleon-lab-sme.co.uk
 - The specific EC2 instance deployed for this purpose
 
@@ -497,47 +448,114 @@ The scanner should:
 
 The Paleon scanner should:
 
-1. Discover both main domain and old subdomain
+1. Discover main domain and old subdomain
 2. Detect expired TLS certificate via handshake
 3. Observe missing HSTS and CSP headers
 4. Query and analyze SPF/DMARC records
-5. Detect open RDP port via TCP connect
+5. Detect open TCP port 3389 via connect scan
 6. Find backup.bak through path enumeration
 7. Detect outdated server version from headers
 8. Report findings with appropriate severity
 9. Classify findings with correct claim strength
 10. Generate Cyber Essentials readiness assessment
 
+## Key Changes from Previous Architecture
+
+### Before
+- Assumed full EC2 with Nginx required for everything
+- Mentioned real RDP service or xrdp
+- Let's Encrypt certificate with 90-day wait
+- Unclear separation between DNS and infrastructure needs
+
+### After
+- Minimal t4g.nano EC2 only where genuinely needed
+- Dummy TCP listener (no RDP service)
+- Self-signed expired certificate (immediate/reproducible)
+- Clear architecture documentation (see ARCHITECTURE.md)
+- Detailed deployment guide (see DEPLOYMENT.md)
+
+## Documentation
+
+- **README.md** (this file) - Project overview
+- **ARCHITECTURE.md** - Detailed architecture decisions and rationale
+- **DEPLOYMENT.md** - Complete step-by-step deployment guide
+- **expected.yaml** - Authoritative expected findings specification
+- **REDESIGN.md** - UI redesign documentation
+- **nginx.conf** - Web server configuration
+- **validate.sh** - Local validation script
+
+## Reproducibility
+
+### Reset Website
+
+```bash
+# SSH to server
+cd /tmp && git clone [repo] site4-new
+sudo rm -rf /var/www/paleon-lab-sme/*
+sudo cp -r site4-new/* /var/www/paleon-lab-sme/
+sudo systemctl reload nginx
+```
+
+### Complete Reset
+
+See DEPLOYMENT.md for full reset procedure including certificate regeneration.
+
+## Cost Estimate
+
+### Monthly Costs (eu-west-2)
+- **t4g.nano instance:** ~$3.00/month
+- **Elastic IP (attached):** $0
+- **8GB gp3 storage:** ~$0.80/month
+- **Data transfer:** ~$1-2/month (minimal)
+
+**Total:** ~$5-6/month
+
+### One-Time Costs
+- **Domain registration:** ~£10-15/year (paleon-lab-sme.co.uk)
+
 ## Definition of Done
 
 Site 4 deployment is complete when:
 
+### Code/Content
 - [x] Website built and all pages created
 - [x] Clean URLs implemented with directory structure
 - [x] Mobile responsive design complete
-- [x] Nginx configuration created
-- [x] backup.bak file created with fake data
+- [x] backup.bak created with fake data
 - [x] old subdomain content created
 - [x] expected.yaml documented
 - [x] README completed
-- [ ] DNS records configured (pending)
-- [ ] AWS EC2 deployed (pending)
-- [ ] TLS certificate installed (pending)
-- [ ] Security group configured (pending)
-- [ ] RDP exposure configured (pending)
-- [ ] All routes verified working (pending)
-- [ ] Scanner validation run (pending)
+
+### Infrastructure (Pending Deployment)
+- [ ] Domain registered
+- [ ] EC2 t4g.nano launched in eu-west-2
+- [ ] Elastic IP allocated and associated
+- [ ] Security group configured (80, 443, 3389, SSH restricted)
+- [ ] DNS A records configured and propagated
+- [ ] DNS TXT records configured (SPF, DMARC)
+- [ ] DNSSEC disabled confirmed
+- [ ] Nginx installed with nginx-extras
+- [ ] Website files deployed
+- [ ] Self-signed expired certificate created
+- [ ] Nginx configured (missing HSTS/CSP, custom Server header)
+- [ ] Dummy TCP listener on port 3389 running
+- [ ] All routes verified working
+- [ ] All 10 security conditions verified externally observable
+- [ ] Paleon scanner validation run
 
 ## Contact
 
 For questions about this test environment:
 
 - Refer to expected.yaml for detailed finding specifications
+- See ARCHITECTURE.md for architecture decisions
+- See DEPLOYMENT.md for deployment instructions
 - All findings are intentional and documented
 - This is a controlled Paleon test environment
 
 ---
 
-**Last Updated:** 2026-08-27  
+**Last Updated:** 2026-08-28  
 **Site Version:** 1.0  
+**Architecture:** Minimal EC2 + Dummy TCP Listener  
 **Status:** Ready for deployment
