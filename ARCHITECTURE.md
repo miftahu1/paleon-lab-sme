@@ -114,7 +114,7 @@ Single t4g.nano EC2 Instance:
 ### AWS EC2 Instance
 
 - **Instance Type:** t4g.nano (2 vCPU, 0.5GB RAM) - smallest ARM instance
-- **AMI:** Ubuntu 22.04 LTS ARM64
+- **AMI:** Ubuntu 24.04 LTS ARM64
 - **Region:** eu-west-2 (London)
 - **Storage:** 8GB gp3 (minimum)
 - **Elastic IP:** Yes (static IP required for DNS)
@@ -281,7 +281,8 @@ Server: Python/2.7.18  # EOL version
 
 **SELECTED: Option 2** - Custom Nginx header is simplest and most controllable.
 
-Requires `nginx-extras` package for `more_set_headers` directive.
+Requires `libnginx-mod-http-headers-more` package for `more_set_headers` directive
+(available on Ubuntu 24.04 LTS; replaces the old `nginx-extras` meta-package).
 
 ## DNS Configuration
 
@@ -337,7 +338,7 @@ _dmarc.paleon-lab-sme.co.uk   IN TXT  "v=DMARC1; p=none; rua=mailto:dmarc@paleon
 - [ ] Admin IP identified for SSH access
 
 ### Infrastructure Setup
-- [ ] Launch t4g.nano Ubuntu 22.04 instance
+- [ ] Launch t4g.nano Ubuntu 24.04 LTS instance
 - [ ] Allocate and associate Elastic IP
 - [ ] Configure security group (80, 443, 3389, SSH from admin IP)
 - [ ] SSH access verified
@@ -351,7 +352,7 @@ _dmarc.paleon-lab-sme.co.uk   IN TXT  "v=DMARC1; p=none; rua=mailto:dmarc@paleon
 
 ### Web Server Setup
 - [ ] Nginx installed
-- [ ] nginx-extras installed (for more_set_headers)
+- [ ] libnginx-mod-http-headers-more installed (for more_set_headers)
 - [ ] Website files deployed to /var/www/paleon-lab-sme/
 - [ ] Old site deployed to /var/www/paleon-lab-sme-old/
 - [ ] backup.bak file present and accessible

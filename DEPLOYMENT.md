@@ -5,7 +5,7 @@
 
 ## Overview
 
-This guide covers the complete deployment of Site 4 to AWS infrastructure. The deployment uses a single minimal EC2 instance (t4g.nano) running Ubuntu 22.04 ARM64.
+This guide covers the complete deployment of Site 4 to AWS infrastructure. The deployment uses a single minimal EC2 instance (t4g.nano) running Ubuntu 24.04 LTS ARM64.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ AWS Elastic IP
 AWS Security Group (80, 443, 3389, SSH)
     │
     ▼
-EC2 t4g.nano (Ubuntu 22.04 ARM64)
+EC2 t4g.nano (Ubuntu 24.04 LTS ARM64)
     │
     ├── Nginx
     │   ├── paleon-lab-sme.co.uk (main site)
@@ -91,10 +91,10 @@ aws ec2 authorize-security-group-ingress \
 ### 1.2 Launch Instance
 
 ```bash
-# Find ARM64 Ubuntu 22.04 AMI
+# Find ARM64 Ubuntu 24.04 LTS AMI
 aws ec2 describe-images \
   --owners 099720109477 \
-  --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*" \
+  --filters "Name=name,Values=ubuntu/images/hvm-ssd*/ubuntu-noble-24.04-arm64-server-*" \
   --query 'Images[0].ImageId' \
   --region eu-west-2 \
   --output text
@@ -178,8 +178,12 @@ sudo apt upgrade -y
 ### 3.3 Install Required Packages
 
 ```bash
-# Install Nginx with extras (for more_set_headers)
-sudo apt install -y nginx nginx-extras
+# Install Nginx
+sudo apt install -y nginx
+
+# Install Nginx headers-more module (for custom Server header)
+# On Ubuntu 24.04 LTS, nginx-extras is replaced by individual module packages
+sudo apt install -y libnginx-mod-http-headers-more
 
 # Install socat (for dummy TCP listener)
 sudo apt install -y socat
@@ -391,7 +395,7 @@ curl -Ik https://paleon-lab-sme.co.uk/contact
 - [ ] DNS A records propagated (main, www, old)
 - [ ] DNS TXT records configured (SPF, DMARC)
 - [ ] DNSSEC NOT enabled
-- [ ] Nginx installed with nginx-extras
+- [ ] Nginx installed with headers-more module
 - [ ] Website files deployed to /var/www/paleon-lab-sme/
 - [ ] Old site deployed to /var/www/paleon-lab-sme-old/
 - [ ] backup.bak file accessible at root
@@ -517,8 +521,8 @@ sudo tail -n 50 /var/log/nginx/paleon-lab-sme-error.log
 ### Issue: Missing headers not working
 
 ```bash
-# Verify nginx-extras installed
-dpkg -l | grep nginx-extras
+# Verify headers-more module installed
+dpkg -l | grep libnginx-mod-http-headers-more
 
 # Check Nginx config includes more_set_headers
 grep more_set_headers /etc/nginx/sites-enabled/paleon-lab-sme

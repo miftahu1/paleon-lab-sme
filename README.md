@@ -243,11 +243,11 @@ See `DEPLOYMENT.md` for complete step-by-step deployment guide.
 
 ### Summary
 
-1. **Launch EC2:** t4g.nano Ubuntu 22.04 ARM64 in eu-west-2
+1. **Launch EC2:** t4g.nano Ubuntu 24.04 LTS ARM64 in eu-west-2
 2. **Configure Security Group:** Allow 80, 443, 3389 from 0.0.0.0/0; SSH from admin IP only
 3. **Allocate Elastic IP:** Associate with instance
 4. **Configure DNS:** A records for main/www/old subdomain; SPF and DMARC TXT records
-5. **Install Software:** nginx, nginx-extras, socat, openssl
+5. **Install Software:** nginx, libnginx-mod-http-headers-more, socat, openssl
 6. **Create Certificate:** Self-signed with 1-day validity (wait 2 days for expiry)
 7. **Deploy Website:** Copy files to /var/www/paleon-lab-sme/
 8. **Configure Nginx:** Deploy config with missing headers and custom Server version
@@ -534,7 +534,7 @@ Site 4 deployment is complete when:
 - [ ] DNS A records configured and propagated
 - [ ] DNS TXT records configured (SPF, DMARC)
 - [ ] DNSSEC disabled confirmed
-- [ ] Nginx installed with nginx-extras
+- [ ] Nginx installed with headers-more module
 - [ ] Website files deployed
 - [ ] Self-signed expired certificate created
 - [ ] Nginx configured (missing HSTS/CSP, custom Server header)
