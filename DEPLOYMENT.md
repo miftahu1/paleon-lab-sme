@@ -5,7 +5,7 @@
 
 ## Overview
 
-This guide covers the complete deployment of Site 4 to AWS infrastructure. The deployment uses a single minimal EC2 instance (t4g.nano) running Ubuntu 24.04 LTS ARM64.
+This guide covers the complete deployment of Site 4 to AWS infrastructure. The deployment uses a single minimal EC2 instance (t4g.nano) running Ubuntu 26.04 LTS ARM64.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ AWS Elastic IP
 AWS Security Group (80, 443, 3389, SSH)
     │
     ▼
-EC2 t4g.nano (Ubuntu 24.04 LTS ARM64)
+EC2 t4g.nano (Ubuntu 26.04 LTS ARM64)
     │
     ├── Nginx
     │   ├── paleon-lab-sme.co.uk (main site)
@@ -91,10 +91,12 @@ aws ec2 authorize-security-group-ingress \
 ### 1.2 Launch Instance
 
 ```bash
-# Find ARM64 Ubuntu 24.04 LTS AMI
+# Find ARM64 Ubuntu 26.04 LTS AMI
+# Note: the AMI name uses Canonical's 26.04 LTS codename. Adjust the
+# codename segment below to match the published image name if it differs.
 aws ec2 describe-images \
   --owners 099720109477 \
-  --filters "Name=name,Values=ubuntu/images/hvm-ssd*/ubuntu-noble-24.04-arm64-server-*" \
+  --filters "Name=name,Values=ubuntu/images/hvm-ssd*/ubuntu-*-26.04-arm64-server-*" \
   --query 'Images[0].ImageId' \
   --region eu-west-2 \
   --output text
@@ -182,7 +184,7 @@ sudo apt upgrade -y
 sudo apt install -y nginx
 
 # Install Nginx headers-more module (for custom Server header)
-# On Ubuntu 24.04 LTS, nginx-extras is replaced by individual module packages
+# On Ubuntu 24.04+ (and 26.04 LTS), nginx-extras is replaced by individual module packages
 sudo apt install -y libnginx-mod-http-headers-more
 
 # Install socat (for dummy TCP listener)

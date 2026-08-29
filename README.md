@@ -243,7 +243,7 @@ See `DEPLOYMENT.md` for complete step-by-step deployment guide.
 
 ### Summary
 
-1. **Launch EC2:** t4g.nano Ubuntu 24.04 LTS ARM64 in eu-west-2
+1. **Launch EC2:** t4g.nano Ubuntu 26.04 LTS ARM64 in eu-west-2
 2. **Configure Security Group:** Allow 80, 443, 3389 from 0.0.0.0/0; SSH from admin IP only
 3. **Allocate Elastic IP:** Associate with instance
 4. **Configure DNS:** A records for main/www/old subdomain; SPF and DMARC TXT records
